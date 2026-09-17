@@ -1,10 +1,12 @@
 import AppKit
 import FinderSync
 import Darwin
+import OSLog
 
 @objc(ClipboardFinderSync)
 final class ClipboardFinderSync: FIFinderSync {
     private let desktop: URL
+    private let logger = Logger(subsystem: "local.clipboardtotext.finder", category: "menu")
 
     override init() {
         // NSHomeDirectory points into the extension sandbox. Resolve the account home instead.
@@ -12,9 +14,16 @@ final class ClipboardFinderSync: FIFinderSync {
         desktop = URL(fileURLWithPath: home, isDirectory: true).appendingPathComponent("Desktop", isDirectory: true)
         super.init()
         FIFinderSyncController.default().directoryURLs = [desktop, desktop.resolvingSymlinksInPath()]
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
+        logger.notice("Finder extension build \(version, privacy: .public) started")
     }
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
+        let targetURL = FIFinderSyncController.default().targetedURL()
+        let selected = FIFinderSyncController.default().selectedItemURLs() ?? []
+        let targetIsDesktop = targetURL?.resolvingSymlinksInPath().standardizedFileURL == desktop.resolvingSymlinksInPath().standardizedFileURL
+        let desktopSelected = selected.contains { $0.resolvingSymlinksInPath().standardizedFileURL == desktop.resolvingSymlinksInPath().standardizedFileURL }
+        logger.notice("menu kind=\(menuKind.rawValue, privacy: .public) targetPresent=\(targetURL != nil, privacy: .public) targetDesktop=\(targetIsDesktop, privacy: .public) selectionCount=\(selected.count, privacy: .public) desktopSelected=\(desktopSelected, privacy: .public)")
         guard menuKind == .contextualMenuForContainer,
               let target = FIFinderSyncController.default().targetedURL(),
               target.resolvingSymlinksInPath().standardizedFileURL == desktop.resolvingSymlinksInPath().standardizedFileURL else {

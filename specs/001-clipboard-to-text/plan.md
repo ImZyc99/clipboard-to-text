@@ -3,7 +3,7 @@
 **Branch**: 当前工作区 | **Date**: 2026-09-17 | **Spec**: [spec.md](spec.md)
 
 ## Summary
-用 SwiftUI 设置窗口 + Finder Sync 扩展提供桌面右键入口；扩展通过专用 URL 唤起宿主，宿主按需读取剪贴板并写入系统桌面。
+用 AppKit 菜单栏入口 + 按需 SwiftUI 设置窗口 + Finder Sync 扩展提供保存入口；扩展通过专用 URL 唤起宿主，宿主按需读取剪贴板并写入系统桌面。
 
 ## Technical Context
 - Language/Version: Swift 6.4（Swift 5 语言兼容模式）。
@@ -40,3 +40,11 @@ specs/001-clipboard-to-text/
 测试正文逐字相等、Unicode 文件名上限、同名文件/目录、并发冲突和权限错误。
 构建后 plutil / codesign 验证包，在用户 Applications 目录安装测试版，用标准 pluginkit 注册并在系统界面启用。
 桌面实机菜单测试使用专门样本文字；不读取用户聊天。
+
+## 桌面入口修复计划
+先记录 Finder 回调类型、目标是否桌面以及选区分类（不记录路径/正文）；检查是否因仅接受 container 回调而过滤桌面。菜单判定提取为可测纯逻辑，兼容桌面作为 item 返回的情况，其他位置不展示。更新安装逻辑，避免旧扩展进程和备份副本造成加载旧版本。最终请用户在真实桌面触发并读取诊断，不能以文件夹窗口替代。
+
+## 菜单栏形态与品牌
+在 AppDelegate 强引用 NSStatusItem，通过 NSMenu 原生呈现操作；LSUIElement=true + accessory activation policy 全程保留，不切 regular。移除延时自动打开设置；重新打开应用只保留菜单栏入口。NSMenuDelegate 打开时刷新扩展状态，不预读剪贴板。设置窗口显式激活并允许关闭，进程继续常驻；退出只退出宿主，Finder 扩展仍由系统管理，之后右键调用可能重新启动宿主。
+生成 Resources/AppIcon.png，保存生成说明 Resources/Icon.md。scripts/build.sh 调用 scripts/build-icon.sh，使用 sips 缩放与 iconutil 打包 ICNS；Resources/App-Info.plist 引用 AppIcon。菜单栏用 Sources/App/BrandIcon.swift 的 20pt 原生矢量 template 图形，仅剪贴板/折页文档轮廓和两条正文线，透明背景，系统在深色下渲染白色；提供可访问标签。设置页使用棕色应用图标。图像缩放属于打包处理，保留原 PNG。
+验证冷启动无窗口、设置往返、菜单保存和退出；检查 activationPolicy、可见窗口及资源装包，复跑核心文件安全测试。已有桌面菜单未通过项不随菜单栏验收关闭。

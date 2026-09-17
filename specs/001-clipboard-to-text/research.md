@@ -25,3 +25,9 @@ Evidence: https://developer.apple.com/documentation/appkit/nsworkspace/activatef
 
 ## CLT 配套差异
 本机 SDK 27 的 State 新宏缺少 SwiftUIMacros 编译插件，使用类型别名明确选择兼容的 State 属性包装器。CLT 缺少 XCTest，验收程序采用 Foundation 独立编译运行，保持同样测试范围。
+# 菜单栏形态补充
+- Decision: NSStatusItem 强引用保存在 AppDelegate；菜单使用 NSMenuDelegate.menuNeedsUpdate 刷新扩展状态，autoenablesItems=false。
+- Rationale: status bar 不持有 status item，菜单 delegate 为 weak；本机 NSMenu.h 要求菜单项更新放在 menuNeedsUpdate，避免 menuWillOpen 时修改。
+- Decision: LSUIElement + accessory 全程保留，设置窗口仍可显式激活，不切 regular。reopen 不自动弹设置。
+- Alternatives: SwiftUI MenuBarExtra 会引入额外生命周期，与现有 AppDelegate/CLT 宿主不如 NSStatusItem 直接；无需新增框架。
+- 品牌：imagegen 生成棕底白线应用图标；菜单栏使用同核心元素的原生矢量单色模板，由系统适配深浅菜单栏。

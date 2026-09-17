@@ -3,9 +3,10 @@ import SwiftUI
 import FinderSync
 
 @main
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var window: NSWindow?
-    private var receivedCommand = false
+    private var statusItem: NSStatusItem?
+    private var extensionStateItem: NSMenuItem?
 
     static func main() {
         let application = NSApplication.shared
@@ -15,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
         let menu = NSMenu()
         let appItem = NSMenuItem()
         menu.addItem(appItem)
@@ -24,10 +26,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(withTitle: "退出剪贴成文", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         NSApp.mainMenu = menu
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            guard let self, !self.receivedCommand else { return }
-            self.showSettings()
+        configureStatusItem()
+    }
+
+    private func configureStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        item.button?.image = BrandIcon.menuBarImage()
+        item.button?.toolTip = "剪贴成文 · 将剪贴板保存为文本"
+        item.button?.setAccessibilityLabel("剪贴成文")
+
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        menu.delegate = self
+        let save = menu.addItem(withTitle: "将剪贴板保存为文本", action: #selector(saveClipboard), keyEquivalent: "")
+        save.target = self
+        save.image = NSImage(systemSymbolName: "doc.badge.plus", accessibilityDescription: nil)
+        menu.addItem(withTitle: "打开桌面", action: #selector(openDesktop), keyEquivalent: "").target = self
+        menu.addItem(.separator())
+        extensionStateItem = menu.addItem(withTitle: "", action: nil, keyEquivalent: "")
+        extensionStateItem?.isEnabled = false
+        menu.addItem(withTitle: "管理右键扩展…", action: #selector(manageExtension), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "设置与使用说明…", action: #selector(showSettings), keyEquivalent: ",").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "退出剪贴成文", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q").target = NSApp
+        item.menu = menu
+        statusItem = item
+        menuNeedsUpdate(menu)
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        extensionStateItem?.title = FIFinderSyncController.isExtensionEnabled ? "右键扩展：已启用" : "右键扩展：未启用"
+    }
+
+    @objc private func openDesktop() {
+        if let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first {
+            NSWorkspace.shared.open(desktop)
         }
+    }
+
+    @objc private func manageExtension() {
+        FIFinderSyncController.showExtensionManagementInterface()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -36,19 +74,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ($0.path.isEmpty || $0.path == "/") && $0.query == nil && $0.fragment == nil &&
             $0.user == nil && $0.password == nil && $0.port == nil
         }) else { return }
-        receivedCommand = true
         saveClipboard()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showSettings()
-        return true
+        // Reopening the app must not reintroduce a mandatory main window.
+        return false
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     @objc private func showSettings() {
-        NSApp.setActivationPolicy(.regular)
         if window == nil {
             let content = SetupView(save: { [weak self] in self?.saveClipboard() })
             let newWindow = NSWindow(
@@ -65,7 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func saveClipboard() {
+    @objc private func saveClipboard() {
         guard let text = NSPasteboard.general.string(forType: .string),
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             showError("请先复制一段文字", detail: "在微信、飞书或其他应用中复制口播稿、提示词，再试一次。图片和文件暂不支持。")
@@ -101,20 +137,20 @@ private struct SetupView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             HStack(alignment: .center, spacing: 14) {
-                Image(systemName: "doc.badge.plus")
-                    .font(.system(size: 36, weight: .regular))
-                    .foregroundStyle(Color.accentColor)
+                Image(nsImage: NSImage(named: "AppIcon") ?? NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 56, height: 56)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 5) {
                     Text("剪贴成文").font(.title2.bold())
-                    Text("复制好文字，右键存下来。")
+                    Text("复制好文字，点一下存下来。")
                         .foregroundStyle(.secondary)
                 }
             }
 
             VStack(alignment: .leading, spacing: 13) {
                 step("1", "复制口播稿或提示词")
-                step("2", "在桌面空白处右键")
+                step("2", "点击顶部菜单栏的剪贴板图标")
                 step("3", "选择「将剪贴板保存为文本」")
             }
 
@@ -145,7 +181,7 @@ private struct SetupView: View {
                 Spacer()
             }
 
-            Text("只在点击保存时读取剪贴板 · 所有内容留在本机")
+            Text("关闭此窗口后仍在菜单栏运行 · 只在保存时读取剪贴板")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

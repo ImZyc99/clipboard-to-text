@@ -39,3 +39,19 @@ US1：菜单和宿主在协议确定后可独立实现；US2：采用同一文�
 ## Phase 7: Convergence
 - [ ] T014 实测真正桌面壁纸空白处右键入口与保存；需用户反馈补充自动化工具无法操作桌面的证据；更新 specs/001-clipboard-to-text/validation.md，完成后关闭 T012。依据 FR-001、US1/AC1、SC-001（partial）。
 - [ ] T015 测量首次及再次点击右键菜单到文件出现的完整耗时，确认 SC-002；核心写入已通过，但首次剪贴板读取存在系统延迟。更新 specs/001-clipboard-to-text/validation.md（partial）。
+
+## Phase 8: 真实桌面右键修复
+- [ ] T016 在 Sources/FinderExtension/FinderSync.swift 记录不含正文/路径的回调诊断，核对真实桌面入口缺失原因（FR-001）。
+- [ ] T017 在 Sources/TextCore/DesktopMenuPolicy.swift 与 Tests/TextCoreTests/TextFileWriterTests.swift 增加桌面菜单判定及回归测试；修正 FinderSync.swift（FR-001）。
+- [x] T018 更新 scripts/install.sh，退出并替换本应用扩展，备份不留在 Applications 内，并验证加载新版本（plan: 安装更新）。
+- [ ] T019 对照用户截图在真实桌面重测菜单与保存，更新 validation.md，保留未通过项（US1/AC1）。
+
+## Phase 9: US4 菜单栏与图标
+- [x] T020 [US4] 在 Sources/App/ClipboardToTextApp.swift 实现常驻菜单栏、动态扩展状态和无自动窗口生命周期（FR-008/009）。
+- [x] T021 [US4] 生成 Resources/AppIcon.png，新增 scripts/build-icon.sh 并接入 scripts/build.sh、Resources/App-Info.plist，设置页使用棕色图标，菜单栏用 BrandIcon.swift 透明单色核心元素（FR-010）。
+- [ ] T022 [US4] 构建安装后实测冷启动、设置往返、保存、退出，更新 README.md 与 specs/001-clipboard-to-text/validation.md（SC-005）。
+
+T020 与图标生成可独立进行；T021 接入后再 T022。菜单栏交付不替代 T014/T019 的真实桌面验证。
+
+## Phase 10: Convergence
+- [ ] T023 在 specs/001-clipboard-to-text/validation.md 补齐 US4/AC3/AC4 与 SC-005 实机证据：关闭设置后的菜单保存、退出后图标消失、再次打开无自动窗口；图标与设置已获用户确认，accessory 应用暂无法由电脑操作工具控制（partial，关联 T022）。
