@@ -55,3 +55,6 @@ T020 与图标生成可独立进行；T021 接入后再 T022。菜单栏交付�
 
 ## Phase 10: Convergence
 - [ ] T023 在 specs/001-clipboard-to-text/validation.md 补齐 US4/AC3/AC4 与 SC-005 实机证据：关闭设置后的菜单保存、退出后图标消失、再次打开无自动窗口；图标与设置已获用户确认，accessory 应用暂无法由电脑操作工具控制（partial，关联 T022）。
+
+## Phase 11: 应用图标透明度
+- [x] T024 [US4] 修正 Resources/AppIcon.png 的内部半透明并记录 Resources/Icon.md，验证 alpha 后重新打包安装，更新 validation.md（FR-010）。

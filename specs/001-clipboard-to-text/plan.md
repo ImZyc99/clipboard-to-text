@@ -48,3 +48,6 @@ specs/001-clipboard-to-text/
 在 AppDelegate 强引用 NSStatusItem，通过 NSMenu 原生呈现操作；LSUIElement=true + accessory activation policy 全程保留，不切 regular。移除延时自动打开设置；重新打开应用只保留菜单栏入口。NSMenuDelegate 打开时刷新扩展状态，不预读剪贴板。设置窗口显式激活并允许关闭，进程继续常驻；退出只退出宿主，Finder 扩展仍由系统管理，之后右键调用可能重新启动宿主。
 生成 Resources/AppIcon.png，保存生成说明 Resources/Icon.md。scripts/build.sh 调用 scripts/build-icon.sh，使用 sips 缩放与 iconutil 打包 ICNS；Resources/App-Info.plist 引用 AppIcon。菜单栏用 Sources/App/BrandIcon.swift 的 20pt 原生矢量 template 图形，仅剪贴板/折页文档轮廓和两条正文线，透明背景，系统在深色下渲染白色；提供可访问标签。设置页使用棕色应用图标。图像缩放属于打包处理，保留原 PNG。
 验证冷启动无窗口、设置往返、菜单保存和退出；检查 activationPolicy、可见窗口及资源装包，复跑核心文件安全测试。已有桌面菜单未通过项不随菜单栏验收关闭。
+
+## 应用图标透明度修正
+imagegen 编辑后仍有内部半透明，用户已明确授权改用脚本修正。scripts/fix-icon-opacity.swift 在原图每行的近不透明边界之间将 alpha 设为 255，不改 RGB 字节，保留外缘抗锯齿。保留旧图至 build/backups，校验新 PNG 内部透明度及圆角外侧透明，重新打包 ICNS、构建签名并替换已安装版本。仅图标资源变化，不重复运行无关正文测试；菜单栏模板不变。
