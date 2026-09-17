@@ -10,7 +10,7 @@
 ## Phase 3: US1 一次操作保存
 - [x] T004 [US1] 在 Sources/TextCore/TextFileWriter.swift 实现原文 UTF-8 写入与失败清理（FR-002、SC-002/003）。
 - [x] T005 [US1] 在 Sources/FinderExtension/FinderSync.swift 实现桌面菜单与宿主定向命令（FR-001）。
-- [x] T006 [US1] 在 Sources/App/ClipboardToTextApp.swift 接收命令、按需读取文字、保存并 Finder 选中（FR-002/005）。
+- [x] T006 [US1] 在 Sources/App/ClipboardToTextApp.swift 接收命令、按需读取文字并保存（FR-002/005；原成功选中行为由 T025 移除）。
 
 ## Phase 4: US2 自动命名
 - [x] T007 [US2] 在 Sources/TextCore/TextFileWriter.swift 实现首行命名，最多 60 个 Character / 180 UTF-8 字节，非法字符和空名字回退（FR-003）。
@@ -58,3 +58,6 @@ T020 与图标生成可独立进行；T021 接入后再 T022。菜单栏交付�
 
 ## Phase 11: 应用图标透明度
 - [x] T024 [US4] 修正 Resources/AppIcon.png 的内部半透明并记录 Resources/Icon.md，验证 alpha 后重新打包安装，更新 validation.md（FR-010）。
+
+## Phase 12: 保存后直接留在桌面
+- [x] T025 [US1] 移除 Sources/App/ClipboardToTextApp.swift 保存成功后的 Finder 激活，同步交互文档，构建安装并记录 validation.md（FR-005、US1/AC2）。

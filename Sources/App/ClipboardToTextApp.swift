@@ -109,8 +109,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         do {
             let desktop = try FileManager.default.url(for: .desktopDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-            let saved = try TextFileWriter.save(text, to: desktop)
-            NSWorkspace.shared.activateFileViewerSelecting([saved])
+            _ = try TextFileWriter.save(text, to: desktop)
         } catch {
             showError("文本未能保存", detail: "\(error.localizedDescription)\n\n请检查桌面是否可写、磁盘空间是否充足，以及系统设置中的桌面访问权限。")
         }

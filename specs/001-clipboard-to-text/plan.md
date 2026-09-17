@@ -51,3 +51,6 @@ specs/001-clipboard-to-text/
 
 ## 应用图标透明度修正
 imagegen 编辑后仍有内部半透明，用户已明确授权改用脚本修正。scripts/fix-icon-opacity.swift 在原图每行的近不透明边界之间将 alpha 设为 255，不改 RGB 字节，保留外缘抗锯齿。保留旧图至 build/backups，校验新 PNG 内部透明度及圆角外侧透明，重新打包 ICNS、构建签名并替换已安装版本。仅图标资源变化，不重复运行无关正文测试；菜单栏模板不变。
+
+## 保存后不弹 Finder
+用户截图确认文件已保存，但不希望弹出 Finder 桌面文件夹。删除 saveClipboard 成功分支的 activateFileViewerSelecting 调用，原子写入成功即返回。保留失败提示、显式「打开桌面」动作；不新增通知或桌面定位自动化。更新交互契约并构建、检查成功路径无窗口调用，安装 0.2.2。纯删除 UI 副作用，不新增镜像测试。
