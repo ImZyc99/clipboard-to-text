@@ -75,3 +75,18 @@ T026 → T027 → T028 → T029；研究可独立进行，代码由主代理顺�
 - [ ] T031 完成辅助功能授权后的桌面 ⌘V 正向保存与非桌面/重命名/文件/暂停负向验收，必要时修正 Sources/App/DesktopPasteController.swift，更新 validation.md 并完成 T029；依据 FR-011/012/013、US5/AC1–5、SC-006（HIGH、partial）。
 - [ ] T032 补齐关闭设置后的菜单保存、退出和重新打开的交互证据，更新 validation.md 并完成 T022/T023；依据 US4/AC3/4、SC-005（MEDIUM、partial）。
 - [ ] T033 测量权限完成后的首次及再次完整保存耗时，更新 validation.md 并完成 T015；依据 SC-002（MEDIUM、partial）。
+
+## Phase 15: US6 图片保存
+- [x] T034 [US6] 在 Tests/ClipboardImageTests.swift 增加图片编码、独立剪贴板优先级/变化、PNG重名与错误验收，接入 scripts/test.sh（FR-014/015/016、SC-007）。
+- [x] T035 [US6] 提取 Sources/TextCore/AtomicFileWriter.swift，保留 TextFileWriter.swift 原有行为；新增 Sources/App/ImageFileWriter.swift，保持尺寸/透明度/方向并执行 256 MiB / 100 MiPixel 上限（FR-004/014/015）。
+- [x] T036 [US6] 新增 Sources/App/ClipboardContent.swift，接入 DesktopPasteController.swift、ClipboardToTextApp.swift 及 FinderSync.swift，处理图片/文本快照和统一界面说明（FR-002/005/011/012/014/016）。
+- [ ] T037 [US6] 更新 scripts/build.sh 与版本，测试、构建、安装并同步 README.md、validation.md；补充本机图片桌面粘贴验收证据（FR-013、SC-007）。
+
+T034 → T035 → T036 → T037。本次复用 US5 事件监听；图片研究与规范更新可并行，代码顺序实现。独立验收为专用 PNG/TIFF/JPEG 经 reader→writer 生成可解码 PNG，原有文本及文件粘贴边界不退化。
+
+## Phase 16: Convergence
+- [ ] T038 补齐真实桌面右键与保存证据，必要时修复 Sources/FinderExtension/FinderSync.swift 并更新 validation.md；延续 T030，依据 FR-001/SC-001（HIGH、partial）。
+- [ ] T039 在 validation.md 补齐桌面快捷键的非桌面、重命名、文件粘贴、暂停/恢复交互；已有本机 AX 触发日志，延续 T031，依据 SC-006（HIGH、partial）。
+- [ ] T040 在 validation.md 记录新版菜单及真实桌面图片粘贴生成 PNG、可打开与无成功窗口的实机结果，完成 T037；依据 US6/AC1、SC-007（HIGH、partial）。
+- [ ] T041 在 validation.md 补齐菜单保存/退出/重开的完整交互，延续 T032；依据 SC-005（MEDIUM、partial）。
+- [ ] T042 在 validation.md 记录权限完成后完整保存耗时，延续 T033；依据 SC-002（MEDIUM、partial）。

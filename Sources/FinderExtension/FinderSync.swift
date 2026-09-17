@@ -34,7 +34,7 @@ final class ClipboardFinderSync: FIFinderSync {
         logger.notice("menu visible=\(showMenu, privacy: .public)")
         guard showMenu else { return nil }
         let menu = NSMenu(title: "剪贴成文")
-        let item = NSMenuItem(title: "将剪贴板保存为文本", action: #selector(saveClipboard), keyEquivalent: "")
+        let item = NSMenuItem(title: "将剪贴板保存到桌面", action: #selector(saveClipboard), keyEquivalent: "")
         item.target = self
         item.image = NSImage(systemSymbolName: "doc.badge.plus", accessibilityDescription: nil)
         menu.addItem(item)

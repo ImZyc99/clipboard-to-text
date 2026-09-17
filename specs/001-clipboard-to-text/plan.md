@@ -63,3 +63,9 @@ Sources/App/DesktopPasteController.swift 管理监听、生命周期、权限与
 UserDefaults 仅存开关；菜单「启用桌面 ⌘V…」显式请求辅助功能并引导系统设置，未授权时不自动弹窗。低频检查仅授权状态，不轮询剪贴板。应用退出移除监听；重启按开关和权限恢复。
 没有可用代码签名身份，仍为本机 adhoc 构建：正常运行不反复请求，未来替换二进制可能需重新授权；不绕过 TCC 或修改其数据库。安装前还原未经确认的根目录实验，保留窄范围右键扩展；右键旧需求仍独立待验收。
 测试正/负向判定、剪贴板文件类型、修改键与 repeat；构建安装后由用户完成首次系统授权，再验证桌面实际保存与不弹 Finder。
+
+## 剪贴板图片
+在原功能内新增 US6。提取 TextCore/AtomicFileWriter.swift 复用既有临时文件 + link 原子不覆盖发布；TextFileWriter 保留原命名与字节规则。App/ImageFileWriter.swift 通过 ImageIO 验证完整图像、转换 PNG 并按固定时间格式命名；有效单帧 PNG 保留原 Data，其余使用原像素最大边长的 thumbnail transform 归一化方向后 PNG 编码，不按 NSImage 点尺寸重绘。不联网、不解析图片 URL。限制输入 256 MiB / 100 MiPixel 避免无界解码。
+App/ClipboardContent.swift 抽象 text(String)/image(PNG Data) 快照，统一读取入口：收集所有 pasteboard item 类型，文件/文件承诺先退出；首个图片项按 PNG→TIFF→JPEG→其他系统支持位图尝试解码，失败不退为文字；无图片才读取 string。读取及转换后核对 changeCount。多个图片项不合并，每次只存第一张。
+DesktopPasteController 保留事件/AX 范围保护，仅改为调用统一 reader 和保存回调；空内容、文件和过期剪贴板静默跳过，图片解码失败在桌面焦点仍有效时提示。宿主手动入口复用 reader，保存枚举分发 TXT/PNG，统一无成功窗口和中文错误提示。菜单文案统一「将剪贴板保存到桌面」，设置说明文字/TXT与图片/PNG。
+Tests/ClipboardImageTests.swift 使用独立 NSPasteboard.withUniqueName 和程序生成的专用像素样例，绝不读取/覆盖用户 general 剪贴板。覆盖 PNG 字节、TIFF alpha 与高 DPI 尺寸、JPEG方向、损坏、图文/文件优先、快照变化、图片并发同名与失败清理；随后构建安装 0.4.0，并由用户提供真实桌面交互结果。旧的真实右键和快捷键证据缺口保留。

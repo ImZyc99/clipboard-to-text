@@ -38,3 +38,10 @@ Evidence: https://developer.apple.com/documentation/appkit/nsworkspace/activatef
 - Decision: LSUIElement + accessory 全程保留，设置窗口仍可显式激活，不切 regular。reopen 不自动弹设置。
 - Alternatives: SwiftUI MenuBarExtra 会引入额外生命周期，与现有 AppDelegate/CLT 宿主不如 NSStatusItem 直接；无需新增框架。
 - 品牌：imagegen 生成棕底白线应用图标；菜单栏使用同核心元素的原生矢量单色模板，由系统适配深浅菜单栏。
+
+## 图片剪贴板与 PNG
+- Decision：全 item 文件/NSFilePromiseReceiver.readableDraggedTypes 优先否决；首个图片 item 内按 PNG/TIFF/JPEG/其他 image UTI 取数据，避免不同 item 混合；真实图片高于附带文本，无图片时保持 TXT。
+- Rationale：[NSPasteboard.types](https://developer.apple.com/documentation/appkit/nspasteboard/types) 是类型并集；[readableDraggedTypes](https://developer.apple.com/documentation/appkit/nsfilepromisereceiver/readabledraggedtypes) 标识文件承诺。读取完成核对 changeCount，损坏不降级为附带 URL。
+- Decision：ImageIO 检查 source/frame status 和实际解码，单帧 PNG 原数据直存；其他来源以完整像素最大边长和 transform 解码首帧，写 PNG 到内存，再复用原子发布。方向变换可交换宽高，透明度不铺底。
+- Rationale：[ImageIO source status](https://developer.apple.com/documentation/imageio/cgimagesourcestatus) 可检测常见无效/截断；[Apple 输出指南](https://developer.apple.com/library/archive/documentation/GraphicsImaging/Conceptual/ImageIOGuide/ikpg_dest/ikpg_dest.html) 要求检查 Finalize。编码先到 Data 避免 URL destination 覆盖已有文件。
+- Alternatives：不使用 NSImage.size/lockFocus 以免 Retina 点/像素混淆；不下载 HTML/URL 图片；不转 JPEG，避免有损再压缩和透明度丢失。

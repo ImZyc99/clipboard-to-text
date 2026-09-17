@@ -9,7 +9,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var extensionStateItem: NSMenuItem?
     private var desktopPasteStateItem: NSMenuItem?
     private var desktopPasteToggleItem: NSMenuItem?
-    private lazy var desktopPaste = DesktopPasteController { [weak self] text in self?.saveText(text) }
+    private lazy var desktopPaste = DesktopPasteController(
+        save: { [weak self] content in self?.saveContent(content) },
+        reportError: { [weak self] message in self?.showError("内容未能保存", detail: message) }
+    )
 
     static func main() {
         let application = NSApplication.shared
@@ -36,13 +39,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func configureStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = BrandIcon.menuBarImage()
-        item.button?.toolTip = "剪贴成文 · 将剪贴板保存为文本"
+        item.button?.toolTip = "剪贴成文 · 将文字或图片保存到桌面"
         item.button?.setAccessibilityLabel("剪贴成文")
 
         let menu = NSMenu()
         menu.autoenablesItems = false
         menu.delegate = self
-        let save = menu.addItem(withTitle: "将剪贴板保存为文本", action: #selector(saveClipboard), keyEquivalent: "")
+        let save = menu.addItem(withTitle: "将剪贴板保存到桌面", action: #selector(saveClipboard), keyEquivalent: "")
         save.target = self
         save.image = NSImage(systemSymbolName: "doc.badge.plus", accessibilityDescription: nil)
         menu.addItem(withTitle: "打开桌面", action: #selector(openDesktop), keyEquivalent: "").target = self
@@ -121,20 +124,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func saveClipboard() {
-        guard let text = NSPasteboard.general.string(forType: .string),
-              !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            showError("请先复制一段文字", detail: "在微信、飞书或其他应用中复制口播稿、提示词，再试一次。图片和文件暂不支持。")
-            return
+        do {
+            saveContent(try ClipboardReader.read())
+        } catch {
+            showError("内容未能保存", detail: error.localizedDescription)
         }
-        saveText(text)
     }
 
-    private func saveText(_ text: String) {
+    private func saveContent(_ content: ClipboardContent) {
         do {
             let desktop = try FileManager.default.url(for: .desktopDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-            _ = try TextFileWriter.save(text, to: desktop)
+            switch content {
+            case .text(let text): _ = try TextFileWriter.save(text, to: desktop)
+            case .image(let png): _ = try ImageFileWriter.save(png, to: desktop)
+            }
         } catch {
-            showError("文本未能保存", detail: "\(error.localizedDescription)\n\n请检查桌面是否可写、磁盘空间是否充足，以及系统设置中的桌面访问权限。")
+            showError("内容未能保存", detail: "\(error.localizedDescription)\n\n请检查桌面是否可写、磁盘空间是否充足，以及系统设置中的桌面访问权限。")
         }
     }
 
@@ -166,15 +171,15 @@ private struct SetupView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 5) {
                     Text("剪贴成文").font(.title2.bold())
-                    Text("复制好文字，点一下存下来。")
+                    Text("复制文字或图片，直接存到桌面。")
                         .foregroundStyle(.secondary)
                 }
             }
 
             VStack(alignment: .leading, spacing: 13) {
-                step("1", "复制口播稿或提示词")
+                step("1", "复制文字或图片")
                 step("2", "点击桌面空白处")
-                step("3", "按 ⌘V，文字直接变成 TXT")
+                step("3", "按 ⌘V，保存为 TXT 或 PNG")
             }
 
             Divider()
@@ -189,7 +194,7 @@ private struct SetupView: View {
                         Button(desktopPaste.authorized ? "开启" : "去授权并开启") { desktopPaste.enableAndAuthorize() }
                     }
                 }
-                Text("首次需开启辅助功能权限。仅在桌面处理文字，不接管其他应用或文件的粘贴。也可随时从菜单栏直接保存。")
+                Text("首次需开启辅助功能权限。仅在桌面保存文字或图片，复制文件时仍使用系统粘贴。也可随时从菜单栏直接保存。")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -203,7 +208,7 @@ private struct SetupView: View {
                 Button("去启用") { FIFinderSyncController.showExtensionManagementInterface() }
             }
 
-            Text("自动取第一行作文件名，保存为 TXT。原文与换行完整保留，重名自动加序号。")
+            Text("文字按第一行命名为 TXT，图片按时间命名为 PNG。保留原文、图片尺寸与透明背景，重名自动加序号。")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

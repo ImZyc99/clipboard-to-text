@@ -12,7 +12,8 @@ final class DesktopPasteController: ObservableObject {
     private var timer: Timer?
     private var activationTime = ProcessInfo.processInfo.systemUptime
     private var lastPointerTime: TimeInterval = 0
-    private let save: (String) -> Void
+    private let save: (ClipboardContent) -> Void
+    private let reportError: (String) -> Void
     private let logger = Logger(subsystem: "local.clipboardtotext.desktop-paste", category: "shortcut")
     private let settingKey = "desktopPasteEnabled"
 
@@ -23,8 +24,9 @@ final class DesktopPasteController: ObservableObject {
         return "已开启"
     }
 
-    init(save: @escaping (String) -> Void) {
+    init(save: @escaping (ClipboardContent) -> Void, reportError: @escaping (String) -> Void) {
         self.save = save
+        self.reportError = reportError
         UserDefaults.standard.register(defaults: [settingKey: true])
         enabled = UserDefaults.standard.bool(forKey: settingKey)
     }
@@ -113,20 +115,18 @@ final class DesktopPasteController: ObservableObject {
             logger.notice("paste ignored: desktop focus not confirmed")
             return
         }
-        let pasteboard = NSPasteboard.general
-        let before = pasteboard.changeCount
-        var types = Set((pasteboard.types ?? []).map(\.rawValue))
-        for item in pasteboard.pasteboardItems ?? [] { types.formUnion(item.types.map(\.rawValue)) }
-        guard !DesktopPastePolicy.hasFileRepresentation(types) else {
-            logger.notice("paste passed through: file representation")
-            return
+        do {
+            let content = try ClipboardReader.read()
+            guard NSWorkspace.shared.frontmostApplication?.processIdentifier == finder.processIdentifier,
+                  desktopHasFocus(finder) else { return }
+            logger.notice("desktop paste accepted")
+            save(content)
+        } catch {
+            if let error = error as? ClipboardReadError, error.ignoredByShortcut { return }
+            guard NSWorkspace.shared.frontmostApplication?.processIdentifier == finder.processIdentifier,
+                  desktopHasFocus(finder) else { return }
+            reportError(error.localizedDescription)
         }
-        let text = pasteboard.string(forType: .string)
-        guard DesktopPastePolicy.acceptsText(text, types: types, before: before, after: pasteboard.changeCount),
-              NSWorkspace.shared.frontmostApplication?.processIdentifier == finder.processIdentifier,
-              desktopHasFocus(finder), let text else { return }
-        logger.notice("desktop text paste accepted")
-        save(text)
     }
 
     private func desktopHasFocus(_ finder: NSRunningApplication) -> Bool {
