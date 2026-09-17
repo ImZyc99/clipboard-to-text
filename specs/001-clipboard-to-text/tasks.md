@@ -42,7 +42,7 @@ US1：菜单和宿主在协议确定后可独立实现；US2：采用同一文�
 
 ## Phase 8: 真实桌面右键修复
 - [ ] T016 在 Sources/FinderExtension/FinderSync.swift 记录不含正文/路径的回调诊断，核对真实桌面入口缺失原因（FR-001）。
-- [ ] T017 在 Sources/TextCore/DesktopMenuPolicy.swift 与 Tests/TextCoreTests/TextFileWriterTests.swift 增加桌面菜单判定及回归测试；修正 FinderSync.swift（FR-001）。
+- [x] T017 在 Sources/TextCore/DesktopMenuPolicy.swift 与 Tests/TextCoreTests/TextFileWriterTests.swift 增加桌面菜单判定及回归测试；修正 FinderSync.swift（FR-001）。
 - [x] T018 更新 scripts/install.sh，退出并替换本应用扩展，备份不留在 Applications 内，并验证加载新版本（plan: 安装更新）。
 - [ ] T019 对照用户截图在真实桌面重测菜单与保存，更新 validation.md，保留未通过项（US1/AC1）。
 
@@ -61,3 +61,17 @@ T020 与图标生成可独立进行；T021 接入后再 T022。菜单栏交付�
 
 ## Phase 12: 保存后直接留在桌面
 - [x] T025 [US1] 移除 Sources/App/ClipboardToTextApp.swift 保存成功后的 Finder 激活，同步交互文档，构建安装并记录 validation.md（FR-005、US1/AC2）。
+
+## Phase 13: US5 桌面 ⌘V
+- [x] T026 [US5] 在 Sources/TextCore/DesktopPastePolicy.swift 与 Tests/TextCoreTests/TextFileWriterTests.swift 定义快捷键/焦点/剪贴板类型策略并测试正负边界（FR-011/012）。
+- [x] T027 [US5] 在 Sources/App/DesktopPasteController.swift 实现 Finder 限定监听、AX 桌面判定、权限状态与开关，更新 scripts/build.sh（FR-011/013）。
+- [x] T028 [US5] 更新 Sources/App/ClipboardToTextApp.swift 菜单和设置，统一 saveText 路径；还原 Sources/FinderExtension/FinderSync.swift 的根目录实验（FR-002/005/009/012/013）。
+- [ ] T029 [US5] 运行策略/保存测试、构建安装；引导用户授权并实测桌面 ⌘V、常规粘贴、重命名和文件粘贴，更新 README.md 与 validation.md（SC-006）。
+
+T026 → T027 → T028 → T029；研究可独立进行，代码由主代理顺序实现。权限授权为用户系统操作，构建和检查先完成。
+
+## Phase 14: Convergence
+- [ ] T030 补齐真正桌面右键入口及保存的实机证据，必要时继续修复 Sources/FinderExtension/FinderSync.swift，更新 validation.md 并收敛 T012/T014/T016/T019；依据 FR-001、US1/AC1、SC-001（HIGH、partial）。
+- [ ] T031 完成辅助功能授权后的桌面 ⌘V 正向保存与非桌面/重命名/文件/暂停负向验收，必要时修正 Sources/App/DesktopPasteController.swift，更新 validation.md 并完成 T029；依据 FR-011/012/013、US5/AC1–5、SC-006（HIGH、partial）。
+- [ ] T032 补齐关闭设置后的菜单保存、退出和重新打开的交互证据，更新 validation.md 并完成 T022/T023；依据 US4/AC3/4、SC-005（MEDIUM、partial）。
+- [ ] T033 测量权限完成后的首次及再次完整保存耗时，更新 validation.md 并完成 T015；依据 SC-002（MEDIUM、partial）。

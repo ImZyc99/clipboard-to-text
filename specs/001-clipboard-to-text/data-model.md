@@ -1,5 +1,9 @@
 # 数据模型
 
+- DesktopPasteState：enabled（UserDefaults）、accessibilityTrusted、monitorInstalled；不持久化按键或焦点内容。
+- DesktopPasteContext：是否 Finder 前台、是否确定桌面祖先、是否窗口/编辑焦点；任何未知结果均放弃。
+- PasteboardSnapshot：一次读取的 String + 前后 changeCount，仅本次保存持有，变化则不保存。
+
 - TextInput：原始 String；必须至少含一个非空白字符，正文不标准化。
 - FileName：首个非空行，首尾空白移除；非法路径符号替换、控制字符删除、前导点移除；最多 60 个 Character / 180 UTF-8 字节；空值回退「未命名」。
 - SavedText：URL，扩展名 .txt；名称冲突依次加空格和 2、3…；不保存历史。

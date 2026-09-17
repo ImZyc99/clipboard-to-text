@@ -79,6 +79,48 @@ final class TextFileWriterTests {
         checkLess(Date().timeIntervalSince(started), 2)
         checkEqual(try Data(contentsOf: file), Data(text.utf8))
     }
+
+    func testDesktopContextMenuKindsAndScope() throws {
+        let desktop = directory.appendingPathComponent("Desktop", isDirectory: true)
+        try FileManager.default.createDirectory(at: desktop, withIntermediateDirectories: false)
+        let alias = directory.appendingPathComponent("DesktopAlias", isDirectory: true)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: desktop)
+        // Finder returned item callbacks for the desktop target; the old container-only guard rejected them.
+        for kind in [DesktopMenuPolicy.Kind.items, .container] {
+            checkTrue(DesktopMenuPolicy.shouldShow(kind: kind, target: desktop, desktop: desktop))
+            checkTrue(DesktopMenuPolicy.shouldShow(kind: kind, target: alias, desktop: desktop))
+            checkFalse(DesktopMenuPolicy.shouldShow(kind: kind, target: nil, desktop: desktop))
+            checkFalse(DesktopMenuPolicy.shouldShow(kind: kind, target: directory, desktop: desktop))
+            checkFalse(DesktopMenuPolicy.shouldShow(kind: kind, target: desktop.appendingPathComponent("Subfolder"), desktop: desktop))
+        }
+        checkFalse(DesktopMenuPolicy.shouldShow(kind: .other, target: desktop, desktop: desktop))
+    }
+
+    func testDesktopPasteShortcutAndFocusBoundaries() {
+        checkTrue(DesktopPastePolicy.matches(keyCode: 9, modifiers: .command, isRepeat: false))
+        for modifiers: DesktopPastePolicy.Modifiers in [[], .shift, [.command, .shift], [.command, .option], [.command, .control], [.command, .function]] {
+            checkFalse(DesktopPastePolicy.matches(keyCode: 9, modifiers: modifiers, isRepeat: false))
+        }
+        checkFalse(DesktopPastePolicy.matches(keyCode: 9, modifiers: .command, isRepeat: true))
+        checkFalse(DesktopPastePolicy.matches(keyCode: 8, modifiers: .command, isRepeat: false))
+        checkTrue(DesktopPastePolicy.acceptsFocus(finderIsFrontmost: true, desktopIsConfirmed: true, hasWindow: false, isEditing: false))
+        checkFalse(DesktopPastePolicy.acceptsFocus(finderIsFrontmost: false, desktopIsConfirmed: true, hasWindow: false, isEditing: false))
+        checkFalse(DesktopPastePolicy.acceptsFocus(finderIsFrontmost: true, desktopIsConfirmed: false, hasWindow: false, isEditing: false))
+        checkFalse(DesktopPastePolicy.acceptsFocus(finderIsFrontmost: true, desktopIsConfirmed: true, hasWindow: true, isEditing: false))
+        checkFalse(DesktopPastePolicy.acceptsFocus(finderIsFrontmost: true, desktopIsConfirmed: true, hasWindow: false, isEditing: true))
+    }
+
+    func testDesktopPastePreservesFilesAndIgnoresUnstableClipboard() {
+        for type in ["public.file-url", "NSFilenamesPboardType", "NSFilesPromisePboardType", "com.apple.pasteboard.promised-file-url", "com.apple.pasteboard.promised-file-content-type", "com.apple.NSFilePromiseItemMetaData"] {
+            checkTrue(DesktopPastePolicy.hasFileRepresentation([type, "public.utf8-plain-text"]))
+            checkFalse(DesktopPastePolicy.acceptsText("/a/file.txt", types: [type], before: 4, after: 4))
+        }
+        checkTrue(DesktopPastePolicy.acceptsText("提示词\n正文🙂", types: ["public.utf8-plain-text"], before: 4, after: 4))
+        checkTrue(DesktopPastePolicy.acceptsText("https://example.com", types: ["public.url", "public.utf8-plain-text"], before: 4, after: 4))
+        checkFalse(DesktopPastePolicy.acceptsText("文字", types: [], before: 4, after: 5))
+        checkFalse(DesktopPastePolicy.acceptsText(nil, types: ["public.png"], before: 4, after: 4))
+        checkFalse(DesktopPastePolicy.acceptsText(" \n", types: [], before: 4, after: 4))
+    }
 }
 
 private func checkEqual<T: Equatable>(_ a: T, _ b: T, file: StaticString = #filePath, line: UInt = #line) {
@@ -106,7 +148,10 @@ struct TestRunner {
             ("existing file, directory, symlink", suite.testExistingFileDirectoryAndSymlinkAreNotOverwritten),
             ("20 concurrent saves", suite.testConcurrentSavesNeverOverwriteAndLeaveNoTemporaryFiles),
             ("invalid and read-only directory", suite.testInvalidDirectoryAndReadOnlyDirectoryFailCleanly),
-            ("100,000 characters under 2 seconds", suite.testLargeTextSavesWithinTwoSeconds)
+            ("100,000 characters under 2 seconds", suite.testLargeTextSavesWithinTwoSeconds),
+            ("desktop item and background menu scope", suite.testDesktopContextMenuKindsAndScope),
+            ("desktop paste shortcut and focus boundaries", suite.testDesktopPasteShortcutAndFocusBoundaries),
+            ("desktop paste file and clipboard guards", suite.testDesktopPastePreservesFilesAndIgnoresUnstableClipboard)
         ]
         for (name, test) in tests {
             do {

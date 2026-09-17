@@ -7,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var window: NSWindow?
     private var statusItem: NSStatusItem?
     private var extensionStateItem: NSMenuItem?
+    private var desktopPasteStateItem: NSMenuItem?
+    private var desktopPasteToggleItem: NSMenuItem?
+    private lazy var desktopPaste = DesktopPasteController { [weak self] text in self?.saveText(text) }
 
     static func main() {
         let application = NSApplication.shared
@@ -27,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         appItem.submenu = appMenu
         NSApp.mainMenu = menu
         configureStatusItem()
+        desktopPaste.start()
     }
 
     private func configureStatusItem() {
@@ -43,6 +47,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         save.image = NSImage(systemSymbolName: "doc.badge.plus", accessibilityDescription: nil)
         menu.addItem(withTitle: "打开桌面", action: #selector(openDesktop), keyEquivalent: "").target = self
         menu.addItem(.separator())
+        desktopPasteStateItem = menu.addItem(withTitle: "", action: nil, keyEquivalent: "")
+        desktopPasteStateItem?.isEnabled = false
+        desktopPasteToggleItem = menu.addItem(withTitle: "", action: #selector(toggleDesktopPaste), keyEquivalent: "")
+        desktopPasteToggleItem?.target = self
+        menu.addItem(.separator())
         extensionStateItem = menu.addItem(withTitle: "", action: nil, keyEquivalent: "")
         extensionStateItem?.isEnabled = false
         menu.addItem(withTitle: "管理右键扩展…", action: #selector(manageExtension), keyEquivalent: "").target = self
@@ -55,8 +64,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        desktopPaste.refresh()
+        desktopPasteStateItem?.title = "桌面 ⌘V：\(desktopPaste.statusText)"
+        desktopPasteToggleItem?.title = desktopPaste.enabled && desktopPaste.authorized ? "暂停桌面 ⌘V" : "启用桌面 ⌘V…"
         extensionStateItem?.title = FIFinderSyncController.isExtensionEnabled ? "右键扩展：已启用" : "右键扩展：未启用"
     }
+
+    @objc private func toggleDesktopPaste() {
+        if desktopPaste.enabled && desktopPaste.authorized { desktopPaste.setEnabled(false) }
+        else { desktopPaste.enableAndAuthorize() }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) { desktopPaste.stop() }
 
     @objc private func openDesktop() {
         if let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first {
@@ -86,9 +105,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func showSettings() {
         if window == nil {
-            let content = SetupView(save: { [weak self] in self?.saveClipboard() })
+            let content = SetupView(desktopPaste: desktopPaste, save: { [weak self] in self?.saveClipboard() })
             let newWindow = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 480, height: 440),
+                contentRect: NSRect(x: 0, y: 0, width: 480, height: 560),
                 styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false
             )
             newWindow.title = "剪贴成文"
@@ -107,6 +126,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             showError("请先复制一段文字", detail: "在微信、飞书或其他应用中复制口播稿、提示词，再试一次。图片和文件暂不支持。")
             return
         }
+        saveText(text)
+    }
+
+    private func saveText(_ text: String) {
         do {
             let desktop = try FileManager.default.url(for: .desktopDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
             _ = try TextFileWriter.save(text, to: desktop)
@@ -130,6 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 private typealias ViewState<Value> = SwiftUI.State<Value>
 
 private struct SetupView: View {
+    @ObservedObject var desktopPaste: DesktopPasteController
     let save: () -> Void
     @ViewState private var extensionEnabled = FIFinderSyncController.isExtensionEnabled
 
@@ -149,11 +173,26 @@ private struct SetupView: View {
 
             VStack(alignment: .leading, spacing: 13) {
                 step("1", "复制口播稿或提示词")
-                step("2", "点击顶部菜单栏的剪贴板图标")
-                step("3", "选择「将剪贴板保存为文本」")
+                step("2", "点击桌面空白处")
+                step("3", "按 ⌘V，文字直接变成 TXT")
             }
 
             Divider()
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("桌面 ⌘V：\(desktopPaste.statusText)").font(.callout)
+                    Spacer()
+                    if desktopPaste.enabled && desktopPaste.authorized {
+                        Button("暂停") { desktopPaste.setEnabled(false) }
+                    } else {
+                        Button(desktopPaste.authorized ? "开启" : "去授权并开启") { desktopPaste.enableAndAuthorize() }
+                    }
+                }
+                Text("首次需开启辅助功能权限。仅在桌面处理文字，不接管其他应用或文件的粘贴。也可随时从菜单栏直接保存。")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             HStack {
                 Label(extensionEnabled ? "桌面右键扩展已启用" : "首次使用，请启用右键扩展",
@@ -188,6 +227,7 @@ private struct SetupView: View {
         .frame(width: 480)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             extensionEnabled = FIFinderSyncController.isExtensionEnabled
+            desktopPaste.refresh()
         }
     }
 

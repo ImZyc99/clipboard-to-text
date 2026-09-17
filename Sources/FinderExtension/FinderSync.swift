@@ -24,11 +24,15 @@ final class ClipboardFinderSync: FIFinderSync {
         let targetIsDesktop = targetURL?.resolvingSymlinksInPath().standardizedFileURL == desktop.resolvingSymlinksInPath().standardizedFileURL
         let desktopSelected = selected.contains { $0.resolvingSymlinksInPath().standardizedFileURL == desktop.resolvingSymlinksInPath().standardizedFileURL }
         logger.notice("menu kind=\(menuKind.rawValue, privacy: .public) targetPresent=\(targetURL != nil, privacy: .public) targetDesktop=\(targetIsDesktop, privacy: .public) selectionCount=\(selected.count, privacy: .public) desktopSelected=\(desktopSelected, privacy: .public)")
-        guard menuKind == .contextualMenuForContainer,
-              let target = FIFinderSyncController.default().targetedURL(),
-              target.resolvingSymlinksInPath().standardizedFileURL == desktop.resolvingSymlinksInPath().standardizedFileURL else {
-            return nil
+        let kind: DesktopMenuPolicy.Kind
+        switch menuKind {
+        case .contextualMenuForItems: kind = .items
+        case .contextualMenuForContainer: kind = .container
+        default: kind = .other
         }
+        let showMenu = DesktopMenuPolicy.shouldShow(kind: kind, target: targetURL, desktop: desktop)
+        logger.notice("menu visible=\(showMenu, privacy: .public)")
+        guard showMenu else { return nil }
         let menu = NSMenu(title: "剪贴成文")
         let item = NSMenuItem(title: "将剪贴板保存为文本", action: #selector(saveClipboard), keyEquivalent: "")
         item.target = self
